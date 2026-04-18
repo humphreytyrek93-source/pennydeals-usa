@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PennyDeals USA</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+<style>
+body { font-family: Arial; background:#f2f2f2; margin:0; }
+header { background:#111; color:white; padding:15px; text-align:center; }
+.container { padding:10px; }
+
+.card {
+  background:white;
+  padding:12px;
+  margin-bottom:10px;
+  border-radius:10px;
+}
+
+img { width:100%; border-radius:8px; }
+
+input, button {
+  width:100%;
+  padding:10px;
+  margin:5px 0;
+}
+
+button {
+  background:green;
+  color:white;
+  border:none;
+  border-radius:5px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>💰 PennyDeals USA</h1>
+</header>
+
+<div class="container">
+
+<h3>Login / Sign Up</h3>
+<input id="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
+<button onclick="login()">Enter</button>
+
+<h3>Post Deal</h3>
+<input id="title" placeholder="Title">
+<input id="desc" placeholder="Description">
+<input id="store" placeholder="Store">
+<input id="price" placeholder="Price">
+<input id="image" placeholder="Image URL">
+<input id="link" placeholder="Affiliate Link">
+<button onclick="postDeal()">Post Deal</button>
+
+<h3>🔥 Latest Deals</h3>
+<div id="deals"></div>
+
+</div>
+
+<script>
+const supabase = window.supabase.createClient(
+  "YOUR_SUPABASE_URL",
+  "YOUR_SUPABASE_KEY"
+);
+
+async function login() {
+  let email = document.getElementById("email").value;
+  let password = document.getElementById("password").value;
+
+  let { error } = await supabase.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    await supabase.auth.signUp({ email, password });
+  }
+
+  alert("Logged in!");
+}
+
+async function postDeal() {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    alert("You must log in first");
+    return;
+  }
+
+  await supabase.from("deals").insert([{
+    title: document.getElementById("title").value,
+    description: document.getElementById("desc").value,
+    store: document.getElementById("store").value,
+    price: document.getElementById("price").value,
+    image: document.getElementById("image").value,
+    link: document.getElementById("link").value,
+    user_id: user.id
+  }]);
+
+  loadDeals();
+}
+
+async function likeDeal(dealId) {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  await supabase.from("likes").insert([{
+    deal_id: dealId,
+    user_id: user.id
+  }]);
+
+  loadDeals();
+}
+
+async function loadDeals() {
+  let { data } = await supabase
+    .from("deals")
+    .select("*")
+    .order("created_at", { ascending:false });
+
+  let html = "";
+
+  data.forEach(d => {
+    html += `
+      <div class="card">
+        <img src="${d.image}" />
+        <h3>${d.title}</h3>
+        <p>${d.description}</p>
+        <p><b>${d.store}</b> - ${d.price}</p>
+
+        <button onclick="likeDeal('${d.id}')">👍 Like</button>
+
+        <a href="${d.link}" target="_blank">
+          <button>Get Deal</button>
+        </a>
+      </div>
+    `;
+  });
+
+  document.getElementById("deals").innerHTML = html;
+}
+
+loadDeals();
+</script>
+
+</body>
+</html>
